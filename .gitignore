@@ -1,0 +1,14 @@
+# секреты — никогда не в репо
+.env
+*.key
+secrets/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# временные файлы Excel и ОС
+~$*
+.DS_Store
+Thumbs.db
