@@ -1,0 +1,4 @@
+from,to,vehicle,price,currency,source,source_date,note
+Москва,Алматы,фура тент 20 т,334220,RUB,https://www.eastlines.ru/moskva-alma-ata/fury-20-tonn/,не указана,публичный тариф перевозчика
+Москва,Алматы,фура 20 т,210000,RUB,https://ilogteh.ru/dostavka-avtotransportom-v-kazahstan,~2026-03,оборудование/паллеты; страница ~218 дней назад
+Москва,Алматы,фура 20 т,1380000,KZT,https://fa-fa.kz/stoimost_perevozki/moskva-almaty/,не указана,«средняя стоимость» 350 ₸/км
