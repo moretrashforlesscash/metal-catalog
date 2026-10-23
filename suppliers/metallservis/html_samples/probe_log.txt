@@ -1,0 +1,72 @@
+city_ekaterinburg.html	https://mc.ru/price/ekaterinburg	200 text/html; Charset=UTF-8	38839 байт
+filial_price_ekaterinburg.xls	https://mc.ru/prices/filials/price_ekaterinburg.xls	200 application/vnd.ms-excel	180224 байт
+filial_price_ekaterinburg.htm	https://mc.ru/prices/filials/price_ekaterinburg.htm	200 text/html	394996 байт
+filial_price_ekat_prof.xls	https://mc.ru/prices/filials/price_ekat_prof.xls	200 application/vnd.ms-excel	16896 байт
+filial_price_ekat_prof.htm	https://mc.ru/prices/filials/price_ekat_prof.htm	200 text/html	11946 байт
+filial_price_prof_ekb.xls	https://mc.ru/prices/filials/price_prof_ekb.xls?v=20261023	200 application/vnd.ms-excel	57344 байт
+filial_price_ekat_engineering.xls	https://mc.ru/prices/filials/price_ekat_engineering.xls	200 application/vnd.ms-excel	65536 байт
+filial_price_ekat_engineering.htm	https://mc.ru/prices/filials/price_ekat_engineering.htm	200 text/html	96503 байт
+city_chelyabinsk.html	https://mc.ru/price/chelyabinsk	200 text/html; Charset=UTF-8	38582 байт
+filial_price_chelyabinsk_pr.xls	https://mc.ru/prices/filials/price_chelyabinsk_pr.xls	200 application/vnd.ms-excel	176128 байт
+filial_price_chelyabinsk_pr.htm	https://mc.ru/prices/filials/price_chelyabinsk_pr.htm	200 text/html	403870 байт
+filial_price_chelyabinsk_prof.xls	https://mc.ru/prices/filials/price_chelyabinsk_prof.xls	200 application/vnd.ms-excel	20480 байт
+filial_price_chelyabinsk_prof.htm	https://mc.ru/prices/filials/price_chelyabinsk_prof.htm	200 text/html	14791 байт
+filial_price_prof_che.xls	https://mc.ru/prices/filials/price_prof_che.xls?v=20261023	200 application/vnd.ms-excel	57344 байт
+city_omsk.html	https://mc.ru/price/omsk	200 text/html; Charset=UTF-8	39371 байт
+filial_price_sib.xls	https://mc.ru/prices/filials/price_sib.xls	200 application/vnd.ms-excel	227328 байт
+filial_price_sib.htm	https://mc.ru/prices/filials/price_sib.htm	200 text/html	497341 байт
+filial_price_barnaul.xls	https://mc.ru/prices/filials/price_barnaul.xls	200 application/vnd.ms-excel	38912 байт
+filial_price_barnaul.htm	https://mc.ru/prices/filials/price_barnaul.htm	200 text/html	56813 байт
+filial_price_kemerovo.xls	https://mc.ru/prices/filials/price_kemerovo.xls	200 application/vnd.ms-excel	29184 байт
+filial_price_kemerovo.htm	https://mc.ru/prices/filials/price_kemerovo.htm	200 text/html	49517 байт
+filial_price_omsk.xls	https://mc.ru/prices/filials/price_omsk.xls	200 application/vnd.ms-excel	34816 байт
+filial_price_omsk.htm	https://mc.ru/prices/filials/price_omsk.htm	200 text/html	65838 байт
+filial_price_krasnoyarsk.xls	https://mc.ru/prices/filials/price_krasnoyarsk.xls	200 application/vnd.ms-excel	34304 байт
+filial_price_krasnoyarsk.htm	https://mc.ru/prices/filials/price_krasnoyarsk.htm	200 text/html	61529 байт
+filial_price_prof_nov.xls	https://mc.ru/prices/filials/price_prof_nov.xls?v=20261023	200 application/vnd.ms-excel	58368 байт
+city_novosibirsk.html	https://mc.ru/price/novosibirsk	200 text/html; Charset=UTF-8	39536 байт
+filial_price_sib.xls	https://mc.ru/prices/filials/price_sib.xls	200 application/vnd.ms-excel	227328 байт
+filial_price_sib.htm	https://mc.ru/prices/filials/price_sib.htm	200 text/html	497341 байт
+filial_price_barnaul.xls	https://mc.ru/prices/filials/price_barnaul.xls	200 application/vnd.ms-excel	38912 байт
+filial_price_barnaul.htm	https://mc.ru/prices/filials/price_barnaul.htm	200 text/html	56813 байт
+filial_price_kemerovo.xls	https://mc.ru/prices/filials/price_kemerovo.xls	200 application/vnd.ms-excel	29184 байт
+filial_price_kemerovo.htm	https://mc.ru/prices/filials/price_kemerovo.htm	200 text/html	49517 байт
+filial_price_omsk.xls	https://mc.ru/prices/filials/price_omsk.xls	200 application/vnd.ms-excel	34816 байт
+filial_price_omsk.htm	https://mc.ru/prices/filials/price_omsk.htm	200 text/html	65838 байт
+filial_price_krasnoyarsk.xls	https://mc.ru/prices/filials/price_krasnoyarsk.xls	200 application/vnd.ms-excel	34304 байт
+filial_price_krasnoyarsk.htm	https://mc.ru/prices/filials/price_krasnoyarsk.htm	200 text/html	61529 байт
+filial_price_prof_nov.xls	https://mc.ru/prices/filials/price_prof_nov.xls?v=20261023	200 application/vnd.ms-excel	58368 байт
+city_ufa.html	https://mc.ru/price/ufa	200 text/html; Charset=UTF-8	40837 байт
+filial_price_perm.xls	https://mc.ru/prices/filials/price_perm.xls	200 application/vnd.ms-excel	225280 байт
+filial_price_perm.htm	https://mc.ru/prices/filials/price_perm.htm	200 text/html	493072 байт
+filial_price_perm_sort.xls	https://mc.ru/prices/filials/price_perm_sort.xls	200 application/vnd.ms-excel	39936 байт
+filial_price_perm_sort.htm	https://mc.ru/prices/filials/price_perm_sort.htm	200 text/html	85621 байт
+filial_price_perm_list.xls	https://mc.ru/prices/filials/price_perm_list.xls	200 application/vnd.ms-excel	29696 байт
+filial_price_perm_list.htm	https://mc.ru/prices/filials/price_perm_list.htm	200 text/html	54390 байт
+filial_price_perm_trub.xls	https://mc.ru/prices/filials/price_perm_trub.xls	200 application/vnd.ms-excel	40448 байт
+filial_price_perm_trub.htm	https://mc.ru/prices/filials/price_perm_trub.htm	200 text/html	82534 байт
+filial_price_perm_kach.xls	https://mc.ru/prices/filials/price_perm_kach.xls	200 application/vnd.ms-excel	32256 байт
+filial_price_perm_kach.htm	https://mc.ru/prices/filials/price_perm_kach.htm	200 text/html	46033 байт
+filial_price_perm_cvet.xls	https://mc.ru/prices/filials/price_perm_cvet.xls	200 application/vnd.ms-excel	26624 байт
+filial_price_perm_cvet.htm	https://mc.ru/prices/filials/price_perm_cvet.htm	200 text/html	36469 байт
+filial_price_perm_nerzh.xls	https://mc.ru/prices/filials/price_perm_nerzh.xls	200 application/vnd.ms-excel	114176 байт
+filial_price_perm_nerzh.htm	https://mc.ru/prices/filials/price_perm_nerzh.htm	200 text/html	207055 байт
+filial_price_perm_metiz.xls	https://mc.ru/prices/filials/price_perm_metiz.xls	200 application/vnd.ms-excel	18944 байт
+filial_price_perm_metiz.htm	https://mc.ru/prices/filials/price_perm_metiz.htm	200 text/html	22105 байт
+filial_price_perm_prof.xls	https://mc.ru/prices/filials/price_perm_prof.xls	200 application/vnd.ms-excel	12800 байт
+filial_price_perm_prof.htm	https://mc.ru/prices/filials/price_perm_prof.htm	200 text/html	6863 байт
+filial_price_prof_per.xls	https://mc.ru/prices/filials/price_prof_per.xls?v=20261023	200 application/vnd.ms-excel	56320 байт
+city_barnaul.html	https://mc.ru/price/barnaul	200 text/html; Charset=UTF-8	39428 байт
+filial_price_sib.xls	https://mc.ru/prices/filials/price_sib.xls	200 application/vnd.ms-excel	227328 байт
+filial_price_sib.htm	https://mc.ru/prices/filials/price_sib.htm	200 text/html	497341 байт
+filial_price_barnaul.xls	https://mc.ru/prices/filials/price_barnaul.xls	200 application/vnd.ms-excel	38912 байт
+filial_price_barnaul.htm	https://mc.ru/prices/filials/price_barnaul.htm	200 text/html	56813 байт
+filial_price_kemerovo.xls	https://mc.ru/prices/filials/price_kemerovo.xls	200 application/vnd.ms-excel	29184 байт
+filial_price_kemerovo.htm	https://mc.ru/prices/filials/price_kemerovo.htm	200 text/html	49517 байт
+filial_price_omsk.xls	https://mc.ru/prices/filials/price_omsk.xls	200 application/vnd.ms-excel	34816 байт
+filial_price_omsk.htm	https://mc.ru/prices/filials/price_omsk.htm	200 text/html	65838 байт
+filial_price_krasnoyarsk.xls	https://mc.ru/prices/filials/price_krasnoyarsk.xls	200 application/vnd.ms-excel	34304 байт
+filial_price_krasnoyarsk.htm	https://mc.ru/prices/filials/price_krasnoyarsk.htm	200 text/html	61529 байт
+filial_price_prof_nov.xls	https://mc.ru/prices/filials/price_prof_nov.xls?v=20261023	200 application/vnd.ms-excel	58368 байт
+listovojprokat.htm	https://mc.ru/prices/listovojprokat.htm?v=2	200 text/html	93703 байт
+catalog_listovoy.html	https://mc.ru/metalloprokat/listovoy	200 text/html; Charset=utf-8	122815 байт
