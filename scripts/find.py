@@ -22,7 +22,6 @@ SYNONYMS = {
     "профиль": ["прямоуг", "квадрат"],
     "профильная": ["прямоуг", "квадрат"],
     "двутавр": ["балк"],
-    "квадратка": ["квадрат"],
     "прямоугольная": ["прямоуг"],
     "профнастил": ["профнаст"],
     "нерж": ["нерж", "aisi"],
@@ -95,6 +94,22 @@ def mass_kg_m(r):
     if any(k in sec for k in ("АРМАТУР", "КРУГ", "КАТАНК")):
         return weights.round_bar(size)
     return None
+
+
+SHEET_FMT = re.compile(r"(\d+(?:[.,]\d+)?)\s*[xх×]\s*(\d+(?:[.,]\d+)?)")
+
+
+def sheet_format(r):
+    """Формат листа из названия позиции («Ст20 н/обр 1.5x3» → «1500x3000»); None — в прайсе не указан."""
+    if "ЛИСТ" not in r["section"].upper():
+        return None
+    m = SHEET_FMT.search(r["name"])
+    if not m:
+        return None
+    w, l = (float(x.replace(",", ".")) for x in m.groups())
+    if w < 20 and l < 20:  # в прайсе размер в метрах
+        w, l = w * 1000, l * 1000
+    return f"{w:g}x{l:g}"
 
 
 def load():
@@ -208,6 +223,8 @@ def find_ex(query, limit=30):
     small = [n for n in nums if n < 1000]
     if small != nums and (hits := _search(small, words)):
         return hits[:limit], len(hits), "без размеров листа/длины: " + ", ".join(f"{n:g}" for n in nums if n >= 1000)
+    if any(w.startswith("лист") for w in words) and len(nums) > 1 and (hits := _search(nums[:1], words)):
+        return hits[:limit], len(hits), "по толщине, без формата листа (формат у большинства листов в прайсе не указан)"
     for drop in sorted(words, key=lambda w: (not re.search(r"\d", w), len(w))):  # сначала марки вида ст3сп
         rest = [w for w in words if w != drop]
         if rest and (hits := _search(small, rest)):

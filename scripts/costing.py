@@ -160,6 +160,14 @@ def landed_cost(iid, qty, unit, city, sheet_mm=None, piece_length_m=None):
         warn.append("у поставщика цена сортового проката — от 5 т, на меньшую партию может быть дороже")
     if re.search(r"неконд|уценк", r["name"].lower()):
         warn.append("некондиция/уценка")
+    if piece and sheet_mm and "ЛИСТ" in r["section"].upper():
+        fmt_price = find.sheet_format(r)
+        want = f"{piece_size(sheet_mm) * 1e6:g}"
+        if not fmt_price:
+            warn.append(f"формат листа в прайсе не указан — посчитано по весу листа {sheet_mm}; "
+                        "наличие формата уточнить у поставщика")
+        elif f"{piece_size(fmt_price) * 1e6:g}" != want:
+            warn.append(f"в прайсе этот лист в формате {fmt_price}, а посчитано для {sheet_mm}")
     if sup["export_vat_zero"]:
         warn.append(f"НДС РФ {sup['vat_pct']}% снят — при экспорте в ЕАЭС поставщик должен дать ставку 0%; "
                     f"если откажет, товар дороже на {sup['vat_pct']}%")

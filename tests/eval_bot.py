@@ -47,6 +47,10 @@ CASES = [
     ("сколько метров в 3 тоннах трубы 57х3,5", {"tools": ["convert"], "no_calc": True}),
     ("сколько весит 100 хлыстов арматуры 12 по 11.7 м", {"tools": ["convert"], "no_calc": True}),
     ("лист 4мм 5 листов караганда", {"no_calc": True}),  # нет размера листа — должен спросить
+    # формат листа в прайсе не указан — не «позиции нет», а расчёт по весу с предупреждением
+    ("лист горячекатанный 4мм толщ 1500-3000мм 5 штук в караганду, такой формат есть?",
+     {"calc": [dict(section="Г/К", size="4", qty=5, unit="шт", sheet=4.5, city="Караганда")],
+      "reply_has": ["формат"], "reply_not": ["нет такой позиции", "позиции нет", "не найден"]}),
     ("доставка москва шымкент 10 тонн", {"tools": ["delivery"], "no_calc": True}),
 ]
 
@@ -134,6 +138,13 @@ for msg, exp in CASES:
             errs.append(f"не посчитал позицию {i + 1}")
         elif best:
             errs.append(f"позиция {i + 1}: " + ", ".join(best))
+    low = (reply or "").lower()
+    for w in exp.get("reply_has", []):
+        if w not in low:
+            errs.append(f"в ответе нет «{w}»")
+    for w in exp.get("reply_not", []):
+        if w in low:
+            errs.append(f"в ответе лишнее «{w}»")
     if errs:
         print(f"✗ {msg}\n    " + "; ".join(errs) + f"\n    вызовы: {[(n, a) for n, a, _ in calls]}\n    ответ: {reply[:200]}")
     else:

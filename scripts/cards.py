@@ -95,7 +95,10 @@ def cost_card(c, supplier_city):
                + (f" +{c['fx']['spread_pct']}%" if c["fx"]["spread_pct"] else "") + ")"]
     if f:
         details.append(f"Доставка {supplier_city} → {c['city']}: {f['source']}. Оценка, не котировка перевозчика")
-    details += c["freight_notes"] + c["warnings"]
+    fmt_warn = [w for w in c["warnings"] if "формат" in w]
+    for w in fmt_warn:  # формат листа — важно, показываем сразу, а не в «Подробнее»
+        out.append("📐 " + escape(w[0].upper() + w[1:]))
+    details += c["freight_notes"] + [w for w in c["warnings"] if w not in fmt_warn]
     details.append("НДС РК идёт в зачёт, если вы плательщик НДС")
     out.append("<blockquote expandable><b>Подробнее</b>\n" + "\n".join(escape(d) for d in details) + "</blockquote>")
     return "\n".join(out)

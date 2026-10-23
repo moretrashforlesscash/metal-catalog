@@ -53,7 +53,7 @@ SEARCH = [
     ("швеллер 12п", "ШВЕЛЛЕР", None), ("балка 20б1", "БАЛК", "Б1"), ("двутавр 20Б1", "БАЛК", "Б1"),
     ("полоса 40х4", "ПОЛОСА", "4"), ("квадрат 20", "КВАДРАТ Г/К", "20"), ("круг 20", "КРУГ", "20"),
     ("шестигранник 17", "ШЕСТИГРАН", "17"), ("нержавейка лист 2мм", "НЕРЖ", "2"), ("профнастил с8 0.5", "ПРОФНАСТ", "0.5"),
-    ("труба 40х20", "ПРЯМОУГ", None),
+    ("труба 40х20", "ПРЯМОУГ", None), ("лист 4 1,5х6", "ЛИСТОВАЯ Г/К", "4"), ("лист 10 ст20 1.5x3", "Г/К", "10"),
 ]
 for q, sec, size in SEARCH:
     hits, total, note = find.find_ex(q, limit=1)
@@ -92,6 +92,11 @@ c = costing.landed_cost(costing.item_id(hits[0]), 5, "шт", "Алматы", she
 check(near(c["meters"], 22.5, 1e-6) and near(c["tons"], 22.5 * 31.4 / 1000, 1e-6), "5 листов 1500×3000 × 4 мм")
 c = costing.landed_cost(costing.item_id(hits[0]), 5, "шт", "Алматы", sheet_mm="1,5х6")
 check(near(c["meters"], 45, 1e-6), "лист «1,5х6» понят как 1500×6000")
+
+check(find.sheet_format({"section": "ЛИСТ", "name": "Ст20 н/обр 1.5x3"}) == "1500x3000", "формат листа из названия")
+check(find.sheet_format({"section": "ЛИСТ", "name": "Ст3 н/обр"}) is None, "формат не указан → None")
+c = costing.landed_cost(costing.item_id(hits[0]), 5, "шт", "Алматы", sheet_mm="1500x3000")
+check(any("формат листа в прайсе не указан" in w for w in c["warnings"]), "предупреждение: формат не указан")
 
 print(f"\n{'ВСЁ ВЕРНО' if not failed else f'ОШИБОК: {failed}'}")
 sys.exit(1 if failed else 0)
