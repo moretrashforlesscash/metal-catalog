@@ -1,3 +1,12 @@
 {
-  "fx_spread_pct": 0
+  "fx_spread_pct": 0,
+  "kz_vat_pct": 16,
+  "suppliers": {
+    "Металл Сервис": {"city": "Москва", "currency": "RUB", "vat_pct": 22, "export_vat_zero": true}
+  },
+  "freight": {
+    "truck_tons": 20,
+    "fafa_cache_days": 3,
+    "groupage_density_t_m3": 2.0
+  }
 }
