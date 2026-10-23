@@ -190,8 +190,16 @@ def parse_query(query):
     return nums, words
 
 
+OFFGRADE = re.compile(r"неконд|уценк|н/д|\bнн\b|2\s*сорт|б/у|обрезк")
+
+
+def is_offgrade(r):
+    """Некондиция, уценка, немерная длина («н/д», «НН»), 2 сорт, б/у — дешевле, но не обычный прокат."""
+    return bool(OFFGRADE.search(r["name"].lower()))
+
+
 # особые виды — показываем ниже обычного проката, если о них не просили
-SPECIAL = ["ДЕТАЛИ", "ФЛАНЦ", "ОТВОД", "РИФЛ", "ПРОСЕЧ", "НЕРЖ", "ОЦИНК", "АЛЮМ", "МЕД", "ЛАТУН", "НИЗКОЛЕГ", "Х/К", "ПРОФНАСТ", "КРЕПЕЖ", "ГАЙК", "БОЛТ"]
+SPECIAL = ["ИНСТРУМЕНТ", "ДЕТАЛИ", "ФЛАНЦ", "ОТВОД", "РИФЛ", "ПРОСЕЧ", "НЕРЖ", "ОЦИНК", "АЛЮМ", "МЕД", "ЛАТУН", "НИЗКОЛЕГ", "Х/К", "ПРОФНАСТ", "КРЕПЕЖ", "ГАЙК", "БОЛТ"]
 
 
 def _rank(r, nums, words):
@@ -203,7 +211,7 @@ def _rank(r, nums, words):
         size_hit = float(r["size"]) in nums
     except ValueError:
         size_hit = bool(re.sub(r"\d", "", r["size"]).lower() and r["size"].lower() in asked)
-    defect = bool(re.search(r"неконд|уценк", r["name"].lower()))
+    defect = is_offgrade(r)
     return (defect, special, not size_hit if nums else False, float(r["price_rub"]))
 
 

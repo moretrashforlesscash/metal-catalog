@@ -158,8 +158,8 @@ def landed_cost(iid, qty, unit, city, sheet_mm=None, piece_length_m=None):
         warn.append("цена за тонну теоретического веса")
     if "(цена от 5 т" in r["title"] and tons is not None and tons < 5:
         warn.append("у поставщика цена сортового проката — от 5 т, на меньшую партию может быть дороже")
-    if re.search(r"неконд|уценк", r["name"].lower()):
-        warn.append("некондиция/уценка")
+    if find.is_offgrade(r):
+        warn.append("некондиция / уценка / немерная длина («н/д», «НН») — не обычный прокат, уточнить у поставщика")
     if piece and sheet_mm and "ЛИСТ" in r["section"].upper():
         fmt_price = find.sheet_format(r)
         want = f"{piece_size(sheet_mm) * 1e6:g}"
