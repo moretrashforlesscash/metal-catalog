@@ -20,6 +20,9 @@ SYNONYMS = {
     "профиль": ["прямоуг", "квадрат"],
     "профильная": ["прямоуг", "квадрат"],
     "двутавр": ["балк"],
+    "квадратка": ["квадрат"],
+    "прямоугольная": ["прямоуг"],
+    "профнастил": ["профнаст"],
     "нерж": ["нерж", "aisi"],
     "оцинк": ["оцинк", "zn"],
     "а500": ["а500", "400;500"],
@@ -51,6 +54,8 @@ def mass_kg_m(r):
         return None
     if ("ПРЯМОУГ" in sec or "КВАДРАТ" in sec) and "ТРУБ" in sec and len(dims) >= 2:
         return weights.profile_pipe(dims[0], dims[1], size)
+    if "КВАДРАТ" in sec and "ТРУБ" in sec and dims:  # в прайсе квадратная труба — одна сторона: «40» = 40×40
+        return weights.profile_pipe(dims[0], dims[0], size)
     if "ТРУБ" in sec and "ВОДОГАЗ" not in sec and "ОВАЛ" not in sec and dims:
         return weights.round_pipe(dims[0], size)
     if "ЛИСТ" in sec and "РИФЛ" not in sec and "ПРОСЕЧ" not in sec:
@@ -71,10 +76,14 @@ def match(r, words, nums):
     hay = norm(f"{r['section']} {r['name']} {r['size']}")
     hay += " " + hay.replace(" ", "")
     for w in words:
+        if w.startswith("проф") and w not in SYNONYMS:  # профтруба, профтрубы, профильной...
+            w = "проф"
         alts = SYNONYMS.get(w, [w if re.search(r"\d", w) or len(w) < 5 else w[:4]])
         if not any(a in hay for a in alts):
             return False
     have = numbers(norm(r["name"])) + numbers(r["size"])
+    if "КВАДРАТ" in r["section"].upper() and "ТРУБ" in r["section"].upper() and have:
+        have.insert(0, have[0])  # «40» в квадратной трубе = 40×40, чтобы находилось «40х40х2»
     for n in nums:
         if n in have:
             have.remove(n)

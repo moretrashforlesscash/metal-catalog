@@ -1,0 +1,15 @@
+[Unit]
+Description=metal-catalog Telegram bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=metal
+WorkingDirectory=/home/metal/metal-catalog
+EnvironmentFile=/home/metal/.metal-catalog.env
+ExecStart=/home/metal/metal-catalog/.venv/bin/python bot/bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
