@@ -12,8 +12,8 @@ APP="$HOME_DIR/metal-catalog"
 ENV_FILE="$HOME_DIR/.metal-catalog.env"
 
 echo "== 1/6 Пакеты"
-apt-get update -qq
-apt-get install -y -qq git curl python3 python3-venv zip unzip >/dev/null
+apt-get -o DPkg::Lock::Timeout=900 update -qq
+apt-get -o DPkg::Lock::Timeout=900 install -y -qq git curl python3 python3-venv zip unzip >/dev/null
 timedatectl set-timezone Asia/Almaty || true
 systemctl restart cron 2>/dev/null || true
 
