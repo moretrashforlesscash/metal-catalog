@@ -28,8 +28,8 @@ echo "== 3/6 Ключ доступа к GitHub"
 sudo -u "$USER_NAME" bash -c '
   mkdir -p ~/.ssh && chmod 700 ~/.ssh
   [ -f ~/.ssh/id_ed25519 ] || ssh-keygen -q -t ed25519 -N "" -C "metal-catalog-server" -f ~/.ssh/id_ed25519
-  ssh-keyscan -q github.com >> ~/.ssh/known_hosts 2>/dev/null
-'
+  ssh-keyscan -q github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+' || true
 if [ ! -d "$APP/.git" ]; then
   echo
   echo "Скопируйте строку ниже и добавьте её на GitHub:"
@@ -54,7 +54,7 @@ TG_CHAT=""
 if [ -n "$TG_TOKEN" ]; then
   read -r -p "Напишите боту любое сообщение в Telegram и нажмите Enter... "
   TG_CHAT=$(curl -fsS "https://api.telegram.org/bot$TG_TOKEN/getUpdates" |
-            python3 -c 'import json,sys; r=json.load(sys.stdin)["result"]; print(r[-1]["message"]["chat"]["id"] if r else "")')
+            python3 -c 'import json,sys; r=[u for u in json.load(sys.stdin)["result"] if "message" in u]; print(r[-1]["message"]["chat"]["id"] if r else "")' || true)
   echo "chat_id: ${TG_CHAT:-не найден — впишите вручную в $ENV_FILE}"
 fi
 cat > "$ENV_FILE" <<EOF
