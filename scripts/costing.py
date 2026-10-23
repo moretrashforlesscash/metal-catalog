@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+import cities  # noqa: E402
 import delivery_jet  # noqa: E402
 import find  # noqa: E402
 import freight_fafa  # noqa: E402
@@ -59,6 +60,10 @@ def freight_options(city_from, city_to, tons):
     """Варианты доставки, самый дешёвый — первым. Ошибки источников попадают в notes."""
     cfg = SETTINGS["freight"]
     options, notes = [], []
+    city_from, _ = cities.normalize(city_from)
+    city_to, city_note = cities.normalize(city_to)
+    if city_note:
+        notes.append(city_note)
     try:
         q = ftl_quote(city_from, city_to)
         trucks = max(1, math.ceil(tons / cfg["truck_tons"]))
@@ -88,7 +93,9 @@ def freight_options(city_from, city_to, tons):
 def piece_size(sheet_mm=None, piece_length_m=None):
     """Размер одной штуки: лист «1500x3000» (мм) → м², хлыст 6 (м) → м."""
     if sheet_mm:
-        w, l = (float(x) for x in re.split(r"\s*[xх×*]\s*", str(sheet_mm).lower().replace(",", ".")))
+        w, l = (float(x) for x in re.split(r"\s*[xх×*]\s*", str(sheet_mm).lower().replace(",", ".").strip()))
+        if w < 20 and l < 20:  # «1,5х6» — размер в метрах
+            w, l = w * 1000, l * 1000
         return w * l / 1e6
     return float(piece_length_m) if piece_length_m else None
 
@@ -132,6 +139,7 @@ def landed_cost(iid, qty, unit, city, sheet_mm=None, piece_length_m=None):
     """Себестоимость партии в ₸. unit: т, кг, м, м2, шт (для шт — размер листа или длина хлыста)."""
     r = get_item(iid)
     sup = SETTINGS["suppliers"][r["supplier"]]
+    city = cities.normalize(city)[0] if cities.normalize(city)[1] is None else city
     piece = piece_size(sheet_mm, piece_length_m) if unit == "шт" else None
     tons, meters, mass = quantities(r, qty, unit, piece)
     gross_rub = goods_rub(r, qty, unit, tons, meters)
@@ -169,6 +177,29 @@ def landed_cost(iid, qty, unit, city, sheet_mm=None, piece_length_m=None):
         "per_m_no_vat": base / meters if meters else None,
         "city": city, "warnings": warn,
     }
+
+
+def convert(iid, qty, unit, sheet_mm=None, piece_length_m=None):
+    """Пересчёт количества: тонны ↔ метры (м²) ↔ штуки (хлысты/листы). Для вопросов «сколько метров в 3 т»."""
+    r = get_item(iid)
+    piece = piece_size(sheet_mm, piece_length_m) if (sheet_mm or piece_length_m) else None
+    tons, meters, mass = quantities(r, qty, unit, piece if unit == "шт" else None)
+    if not mass:
+        return f"Для «{r['section']} {r['name']} {r['size']}» нет формулы массы — пересчитать нельзя."
+    sheet = "ЛИСТ" in r["section"].upper()
+    per = "м²" if sheet else "м"
+    lines = [f"{r['section']} | {r['name']} | {r['size_label']} {r['size']}: {mass:.3f} кг/{per} (теоретическая, факт ±3–8%)",
+             f"{qty:g} {unit}" + (f" по {sheet_mm or str(piece_length_m) + ' м'}" if unit == "шт" and piece else "")
+             + f" = {tons:.3f} т = {meters:,.1f} {per}".replace(",", " ")]
+    if sheet:
+        for w, l in ((1.5, 6), (1.25, 2.5), (1.5, 3)) if not piece else ():
+            lines.append(f"  листов {w * 1000:g}x{l * 1000:g}: {meters / (w * l):.1f} шт ({w * l * mass:.1f} кг/лист)")
+        if piece:
+            lines.append(f"  листов {sheet_mm}: {meters / piece:.1f} шт ({piece * mass:.1f} кг/лист)")
+    else:
+        for L in ((piece,) if piece else (6, 12)):
+            lines.append(f"  хлыстов по {L:g} м: {meters / L:.1f} шт ({L * mass:.1f} кг/хлыст)")
+    return "\n".join(lines)
 
 
 def fmt(x):

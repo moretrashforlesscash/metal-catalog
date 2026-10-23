@@ -28,7 +28,7 @@ def ru_date(iso):
 def pretty_name(section, name, size):
     """«ТРУБЫ ЭЛЕКТРОСВАРНЫЕ ПРЯМОУГ | 40x20 | 2» → «Профтруба 40×20×2»."""
     sec, nm = section.upper(), name.strip()
-    dims = [x for x in re.findall(r"\d+(?:[.,]\d+)?", nm)]
+    dims = [f"{x:g}" for x in find.numbers(find.norm(find.dims_text(nm)))]
     extra = re.sub(r"^[\d.,x×хX ]+", "", nm).strip()
     tail = f" {extra}" if extra else ""
     if "ТРУБ" in sec and ("ПРЯМОУГ" in sec or "КВАДРАТ" in sec) and dims:
@@ -36,6 +36,15 @@ def pretty_name(section, name, size):
         return f"Профтруба {a}×{b}×{size}{tail}"
     if "ТРУБ" in sec and "ВОДОГАЗ" not in sec and dims and "НЕРЖ" not in sec:
         return f"Труба {dims[0]}×{size}{tail}"
+    if "УГОЛОК" in sec and dims:
+        b = dims[1] if len(dims) > 1 else dims[0]
+        return f"Уголок {dims[0]}×{b}×{size}{tail}"
+    if "ШВЕЛЛЕР" in sec and dims:
+        return f"Швеллер {'гнутый ' if 'ГНУТ' in sec else ''}{dims[0]}" + (f"×{dims[1]}×{size}" if "ГНУТ" in sec and len(dims) > 1 else "")
+    if ("БАЛК" in sec or "ДВУТАВР" in sec) and dims:
+        return f"Балка {dims[0]}{size}"
+    if "ПОЛОСА" in sec and dims:
+        return f"Полоса {dims[0]}×{size}"
     if "АРМАТУР" in sec:
         return f"Арматура Ø{size} {nm}"
     if "ЛИСТ" in sec and "НЕРЖ" not in sec:
