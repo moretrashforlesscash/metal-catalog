@@ -81,7 +81,8 @@ def match(r, words, nums):
         alts = SYNONYMS.get(w, [w if re.search(r"\d", w) or len(w) < 5 else w[:4]])
         if not any(a in hay for a in alts):
             return False
-    have = numbers(norm(r["name"])) + numbers(r["size"])
+    name_no_len = re.sub(r"\d+(?:[.,]\d+)?\s*м(?![мa-zа-я])", " ", r["name"].lower())  # «12м» — длина, не размер
+    have = numbers(norm(name_no_len)) + numbers(r["size"])
     if "КВАДРАТ" in r["section"].upper() and "ТРУБ" in r["section"].upper() and have:
         have.insert(0, have[0])  # «40» в квадратной трубе = 40×40, чтобы находилось «40х40х2»
     for n in nums:

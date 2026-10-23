@@ -10,16 +10,20 @@ Claude (по умолчанию Haiku) только понимает запро�
 
 import json
 import os
+import re
 import sys
 import time
 import traceback
+import urllib.error
 import urllib.parse
 import urllib.request
+from html import escape
 from pathlib import Path
 
 import anthropic
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+import cards  # noqa: E402
 import costing  # noqa: E402
 import find  # noqa: E402
 
@@ -37,17 +41,21 @@ SYSTEM = """Ты — помощник Алема, B2B-поставщика ме�
 Что умеешь — через функции:
 - search_catalog: найти позиции в каталоге поставщиков (цены в рублях с НДС РФ, за единицу поставщика).
 - calc_cost: себестоимость партии в тенге с доставкой до города Казахстана и НДС РК 16%.
+- show_prices: показать карточку с ценами выбранных позиций (когда нужен список цен без расчёта).
 - delivery: стоимость доставки партии между городами.
 
+Карточки calc_cost и show_prices бот отправляет сам, красиво оформленными. Поэтому после них НЕ повторяй цифры
+и не пересказывай карточку: допиши максимум 1–2 коротких строки — альтернативы, предупреждение или вопрос
+(«Посчитать другой город или объём?»). Если добавить нечего — ответь одним словом «Готово».
+
 Правила:
-1. Цифры бери ТОЛЬКО из результатов функций. Ничего не считай и не округляй сам. Результат calc_cost передавай
-   с теми же цифрами и пометками (можно сократить строки, но не менять числа).
+1. Цифры бери ТОЛЬКО из результатов функций. Ничего не считай и не округляй сам.
 2. Позиции нет в каталоге — так и скажи и предложи уточнить. Не подставляй похожую молча; аналоги — только явно
    помеченные как аналоги.
 3. Найдено несколько вариантов — бери самый дешёвый нормальный (не некондицию/уценку, если не просили), коротко
    назови 1–2 альтернативы с ценами.
 4. Есть позиция, количество и город — сразу считай calc_cost. Нет города — считай до Алматы и скажи об этом.
-   Нет количества — покажи цены из каталога и спроси объём.
+   Нет количества — покажи цены через show_prices (3–5 лучших вариантов одной позиции) и спроси объём.
 5. Количество: «5т», «5 тонн» → 5 т; «600 м», «600 метров» → 600 м; «200 шт» → 200 шт.
    Листы штуками («5 листов 1500х3000») → unit=шт + sheet_mm="1500x3000"; трубы/арматура/уголок штуками
    («100 хлыстов по 6 м») → unit=шт + piece_length_m=6. Размер листа/хлыста в каталоге не указан — если не задан
@@ -92,6 +100,19 @@ TOOLS = [
         },
     },
     {
+        "name": "show_prices",
+        "description": "Отправить пользователю карточку с ценами выбранных позиций (id из search_catalog), "
+                       "3–5 вариантов одной позиции, самые подходящие первыми.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "item_ids": {"type": "array", "items": {"type": "string"}},
+                "title": {"type": "string", "description": "короткий заголовок, например «Арматура А500 Ø12»"},
+            },
+            "required": ["item_ids"],
+        },
+    },
+    {
         "name": "delivery",
         "description": "Варианты доставки партии металла между городами (фура 20 т, догруз, сборный груз) в тенге.",
         "input_schema": {
@@ -107,7 +128,7 @@ TOOLS = [
 ]
 
 
-def run_tool(name, args):
+def run_tool(name, args, outbox):
     if name == "search_catalog":
         hits, total = find.find(args["query"], limit=min(int(args.get("limit") or 8), 20))
         items = []
@@ -123,7 +144,12 @@ def run_tool(name, args):
     if name == "calc_cost":
         c = costing.landed_cost(args["item_id"], float(args["quantity"]), args["unit"], args["city"],
                                 args.get("sheet_mm"), args.get("piece_length_m"))
-        return costing.summary(c)
+        outbox.append(cards.cost_card(c, costing.SETTINGS["suppliers"][c["item"]["supplier"]]["city"]))
+        return "Карточка отправлена пользователю. Для справки:\n" + costing.summary(c)
+    if name == "show_prices":
+        rows = [costing.get_item(i) for i in args["item_ids"][:8]]
+        outbox.append(cards.prices_card(rows, args.get("title")))
+        return "Карточка с ценами отправлена пользователю."
     if name == "delivery":
         opts, notes = costing.freight_options(args["city_from"], args["city_to"], float(args["tons"]))
         lines = [f"{o['type']}: {costing.fmt(o['kzt'])} ₸, ~{o['days']} дн. ({o['source']})" for o in opts]
@@ -144,6 +170,7 @@ def ask_claude(chat_id, text):
         if sum(1 for m in messages if m["role"] == "user" and isinstance(m["content"], str)) >= MAX_TURNS:
             messages = []
     messages.append({"role": "user", "content": text})
+    outbox = []
 
     for _ in range(MAX_STEPS):
         params = dict(model=model, max_tokens=8000, system=SYSTEM, tools=TOOLS, messages=messages,
@@ -154,21 +181,25 @@ def ask_claude(chat_id, text):
             resp = client.messages.create(**params)
         messages.append({"role": "assistant", "content": resp.content})
         if resp.stop_reason == "refusal":
-            return "Модель отказалась отвечать на этот запрос. Попробуйте переформулировать."
+            return outbox, "Модель отказалась отвечать на этот запрос. Попробуйте переформулировать."
         if resp.stop_reason != "tool_use":
             if not smart:
                 history[chat_id] = messages
-            return "\n".join(b.text for b in resp.content if b.type == "text").strip() or "(пустой ответ)"
+            text = "\n".join(b.text for b in resp.content if b.type == "text").strip()
+            if outbox and re.fullmatch(r"готово\.?", text.lower()):
+                text = ""
+            return outbox, text or ("" if outbox else "(пустой ответ)")
         results = []
         for b in resp.content:
             if b.type != "tool_use":
                 continue
             try:
-                results.append({"type": "tool_result", "tool_use_id": b.id, "content": run_tool(b.name, b.input)})
+                results.append({"type": "tool_result", "tool_use_id": b.id,
+                                "content": run_tool(b.name, b.input, outbox)})
             except Exception as e:
                 results.append({"type": "tool_result", "tool_use_id": b.id, "content": f"ошибка: {e}", "is_error": True})
         messages.append({"role": "user", "content": results})
-    return "Слишком много шагов на один вопрос — уточните запрос."
+    return outbox, "Слишком много шагов на один вопрос — уточните запрос."
 
 
 def tg(method, **params):
@@ -180,6 +211,13 @@ def tg(method, **params):
 def send(chat_id, text):
     for i in range(0, len(text), 4000):
         tg("sendMessage", chat_id=chat_id, text=text[i:i + 4000])
+
+
+def send_html(chat_id, html):
+    try:
+        tg("sendMessage", chat_id=chat_id, text=html[:4096], parse_mode="HTML")
+    except urllib.error.HTTPError:  # не разобрал разметку — отправим без оформления
+        send(chat_id, re.sub(r"<[^>]+>", "", html))
 
 
 HELP = ("Пишите запрос как обычно, например:\n"
@@ -207,7 +245,11 @@ def handle(msg):
         return
     tg("sendChatAction", chat_id=chat_id, action="typing")
     try:
-        send(chat_id, ask_claude(chat_id, text))
+        outbox, reply = ask_claude(chat_id, text)
+        for card in outbox:
+            send_html(chat_id, card)
+        if reply:
+            send_html(chat_id, f"<i>{escape(reply)}</i>" if outbox else escape(reply))
     except anthropic.APIStatusError as e:
         history.pop(chat_id, None)
         send(chat_id, f"Ошибка Claude API ({e.status_code}): {e.message}")

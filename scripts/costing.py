@@ -79,7 +79,8 @@ def freight_options(city_from, city_to, tons):
                             "kzt": j["pickup"] + j["line"] + j["door"] + j["extra"], "days": j["days"],
                             "source": "калькулятор jetlogistic.kz, забор + магистраль + до двери"})
         except Exception as e:
-            notes.append(f"сборный груз: нет данных ({e})")
+            notes.append(f"сборный груз JetLogistic: не возит в {city_to}" if "не нашли город" in str(e)
+                         else f"сборный груз JetLogistic: нет данных ({str(e)[:80]})")
     options.sort(key=lambda o: o["kzt"])
     return options, notes
 
@@ -156,7 +157,7 @@ def landed_cost(iid, qty, unit, city, sheet_mm=None, piece_length_m=None):
                     f"если откажет, товар дороже на {sup['vat_pct']}%")
     return {
         "item": {"id": iid, "supplier": r["supplier"], "price_date": r["price_date"], "section": r["section"],
-                 "name": r["name"], "size": f"{r['size_label']} {r['size']}".strip(),
+                 "name": r["name"], "size": f"{r['size_label']} {r['size']}".strip(), "size_raw": r["size"],
                  "price_rub": float(r["price_rub"]), "price_unit": r["unit"], "src": r["src"]},
         "qty": qty, "unit": unit, "piece": piece, "piece_desc": sheet_mm or (f"{piece_length_m} м" if piece_length_m else None),
         "tons": tons, "meters": meters, "mass_kg_m": mass,
