@@ -39,6 +39,8 @@ CATALOG = ROOT / "catalog" / "metallservis.csv"
 STATE = SUP / "last_zip.sha256"
 PRICE_PAGE = "https://mc.ru/price/msk"
 ZIP_FALLBACK = ["https://mc.ru/prices/metserv.zip"]  # имя архива с сайта: metserv.zip
+# на странице несколько zip (резка и т.п.) — общий прайс узнаём по составу файлов
+EXPECTED_XLS = {"truby.xls", "sortovojprokat.xls", "listovojprokat.xls", "krepezh.xls", "nerzhaveika.xls"}
 FAFA_ROUTES = [("Москва", "Алматы"), ("Москва", "Астана"), ("Москва", "Караганда"),
                ("Москва", "Шымкент"), ("Екатеринбург", "Алматы"), ("Челябинск", "Алматы")]
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
@@ -75,16 +77,19 @@ def find_zip_urls():
 
 def fetch_mc(today):
     """Скачать архив, распаковать в raw/<дата>. None — если архив не изменился."""
-    last_err = None
+    tried = []
     for url in dict.fromkeys(find_zip_urls()):
         try:
-            data = curl(url)
-            zf = zipfile.ZipFile(io.BytesIO(data))
-            break
+            zf = zipfile.ZipFile(io.BytesIO(curl(url)))
         except (subprocess.CalledProcessError, zipfile.BadZipFile) as e:
-            last_err = f"{url}: {e}"
+            tried.append(f"{url}: {e}")
+            continue
+        names = {Path(n).name.lower() for n in zf.namelist()}
+        if len(names & EXPECTED_XLS) >= 3:
+            break
+        tried.append(f"{url}: не общий прайс ({', '.join(sorted(names))[:120]})")
     else:
-        raise RuntimeError(f"не удалось скачать прайс mc.ru ({last_err})")
+        raise RuntimeError("не нашёл общий прайс mc.ru. Проверено: " + "; ".join(tried))
     xls = [n for n in zf.namelist() if n.lower().endswith(".xls")]
     digest = hashlib.sha256(b"".join(zf.read(n) for n in sorted(xls))).hexdigest()
     if STATE.exists() and STATE.read_text().strip() == digest:
@@ -93,8 +98,7 @@ def fetch_mc(today):
     out.mkdir(parents=True, exist_ok=True)
     for n in xls:
         (out / Path(n).name).write_bytes(zf.read(n))
-    STATE.write_text(digest + "\n")
-    return out
+    return out, digest
 
 
 def read_catalog(path):
@@ -139,10 +143,11 @@ def diff_report(old, new):
 
 
 def update_mc(today, report):
-    raw = fetch_mc(today)
-    if raw is None:
+    got = fetch_mc(today)
+    if got is None:
         report.append("Металл Сервис: прайс не изменился")
         return
+    raw, digest = got
     parser = load_module(SUP / "parser.py", "mc_parser")
     tmp = Path(tempfile.mkdtemp()) / "metallservis.csv"
     parser.main(str(raw), str(tmp))
@@ -154,6 +159,7 @@ def update_mc(today, report):
         return
     report.append(f"Металл Сервис: {len(new)} позиций, " + diff_report(old, new))
     shutil.move(tmp, CATALOG)
+    STATE.write_text(digest + "\n")  # только после успешной проверки — битый архив скачаем снова
 
 
 def prune_raw(keep_days=30):

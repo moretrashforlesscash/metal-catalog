@@ -24,7 +24,7 @@ def clean(s):
 
 
 def num(s):
-    return float(re.sub(r"[^\d,.]", "", s).replace(",", "."))
+    return float(re.search(r"\d+(?:[.,]\d+)?", s.replace(" ", ""))[0].replace(",", "."))
 
 
 def fetch():
@@ -37,7 +37,7 @@ def fetch():
         if len(td) < 6 or "км" not in td[2]:
             continue
         day, month = td[0].split(".")
-        tons = re.search(r"([\d.,]+)\s*т", td[3])
+        tons = re.search(r"(\d+(?:[.,]\d+)?)\s*т\b", td[3])
         t = num(tons[1]) if tons else 0
         cls = "фура 20 т" if t >= 15 else "средний 5–15 т" if t >= 5 else "малый до 5 т"
         rows.append({
