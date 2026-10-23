@@ -18,18 +18,26 @@ Telegram-бот, которому можно писать «труба 40х20х2
 1. В Telegram найдите **@BotFather** → `/newbot` → придумайте имя → получите **токен** вида `123456:ABC...`.
 2. Сохраните токен — его спросит установщик.
 
-## Шаг 3. Установка (10 минут)
-1. Подключитесь к серверу. Windows: откройте «Терминал» / PowerShell и введите
-   `ssh root@IP-АДРЕС` (пароль из письма хостинга).
-2. Репозиторий приватный, поэтому скрипт установки нужно перенести вручную:
-   откройте на GitHub файл `deploy/setup.sh` → кнопка **Raw** → скопируйте всё; на сервере выполните
-   `nano setup.sh`, вставьте (правый клик), сохраните `Ctrl+O`, `Enter`, `Ctrl+X`.
-3. Запустите: `bash setup.sh`
-4. Установщик покажет строку `ssh-ed25519 ...` — добавьте её на GitHub:
-   репозиторий → **Settings → Deploy keys → Add deploy key**, вставьте, отметьте **Allow write access** → **Add key**.
-   Вернитесь в терминал, нажмите Enter.
-5. Вставьте токен бота, напишите боту любое сообщение, нажмите Enter.
-6. В конце пройдёт пробный запуск — в Telegram придёт первый отчёт.
+## Шаг 3. Подключиться к серверу
+Windows: Пуск → «Терминал» (или PowerShell) → `ssh root@IP-АДРЕС` → на вопрос `yes` → пароль root
+(при вводе пароль не отображается — это нормально; вставка — правый клик).
+
+## Шаг 4. Создать ключ доступа к GitHub — вставить в терминал целиком:
+```
+apt-get update -qq && apt-get install -y -qq git
+id metal >/dev/null 2>&1 || useradd -m -s /bin/bash metal
+sudo -u metal bash -c 'mkdir -p ~/.ssh && chmod 700 ~/.ssh && [ -f ~/.ssh/id_ed25519 ] || ssh-keygen -q -t ed25519 -N "" -f ~/.ssh/id_ed25519; ssh-keyscan -q github.com >> ~/.ssh/known_hosts 2>/dev/null; cat ~/.ssh/id_ed25519.pub'
+```
+Последняя строка вывода — `ssh-ed25519 AAAA... ` — это ключ. Добавьте его на GitHub:
+репозиторий → **Settings → Deploy keys → Add deploy key**, Title `server`, вставить ключ,
+✓ **Allow write access** → **Add key**.
+
+## Шаг 5. Скачать код и запустить установку:
+```
+sudo -u metal git clone git@github.com:moretrashforlesscash/metal-catalog.git /home/metal/metal-catalog && bash /home/metal/metal-catalog/deploy/setup.sh
+```
+Установщик спросит ключ Claude API и токен Telegram-бота (можно пропустить Enter и вписать потом),
+попросит написать боту сообщение и в конце сделает пробный запуск.
 
 ## Если что-то пошло не так
 - Лог: `tail -n 50 /home/metal/update.log`
