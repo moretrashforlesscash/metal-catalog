@@ -84,10 +84,21 @@ def freight_options(city_from, city_to, tons):
     return options, notes
 
 
-def quantities(r, qty, unit):
-    """Перевод количества в тонны и метры по теоретической массе (если формула есть)."""
+def piece_size(sheet_mm=None, piece_length_m=None):
+    """Размер одной штуки: лист «1500x3000» (мм) → м², хлыст 6 (м) → м."""
+    if sheet_mm:
+        w, l = (float(x) for x in re.split(r"\s*[xх×*]\s*", str(sheet_mm).lower().replace(",", ".")))
+        return w * l / 1e6
+    return float(piece_length_m) if piece_length_m else None
+
+
+def quantities(r, qty, unit, piece=None):
+    """Перевод количества в тонны и метры по теоретической массе (если формула есть).
+    piece — м (длина хлыста) или м² (площадь листа) одной штуки, если количество в штуках."""
     mass = find.mass_kg_m(r)  # кг/м, у листа — кг/м²
     tons = meters = None
+    if unit == "шт" and piece:
+        qty, unit = qty * piece, "м"
     if unit == "т":
         tons = qty
         meters = tons * 1000 / mass if mass else None
@@ -116,11 +127,12 @@ def goods_rub(r, qty, unit, tons, meters):
                      "для этой позиции нет формулы массы, укажите количество в единицах цены")
 
 
-def landed_cost(iid, qty, unit, city):
-    """Себестоимость партии в ₸. unit: т, кг, м, м2, шт."""
+def landed_cost(iid, qty, unit, city, sheet_mm=None, piece_length_m=None):
+    """Себестоимость партии в ₸. unit: т, кг, м, м2, шт (для шт — размер листа или длина хлыста)."""
     r = get_item(iid)
     sup = SETTINGS["suppliers"][r["supplier"]]
-    tons, meters, mass = quantities(r, qty, unit)
+    piece = piece_size(sheet_mm, piece_length_m) if unit == "шт" else None
+    tons, meters, mass = quantities(r, qty, unit, piece)
     gross_rub = goods_rub(r, qty, unit, tons, meters)
     net_rub = gross_rub / (1 + sup["vat_pct"] / 100) if sup["export_vat_zero"] else gross_rub
     fx, spread = rate.effective(sup["currency"])
@@ -146,7 +158,8 @@ def landed_cost(iid, qty, unit, city):
         "item": {"id": iid, "supplier": r["supplier"], "price_date": r["price_date"], "section": r["section"],
                  "name": r["name"], "size": f"{r['size_label']} {r['size']}".strip(),
                  "price_rub": float(r["price_rub"]), "price_unit": r["unit"], "src": r["src"]},
-        "qty": qty, "unit": unit, "tons": tons, "meters": meters, "mass_kg_m": mass,
+        "qty": qty, "unit": unit, "piece": piece, "piece_desc": sheet_mm or (f"{piece_length_m} м" if piece_length_m else None),
+        "tons": tons, "meters": meters, "mass_kg_m": mass,
         "fx": {"rate": fx, "spread_pct": spread, "currency": sup["currency"]},
         "goods_rub_gross": gross_rub, "goods_rub_net": net_rub, "goods_kzt": goods_kzt,
         "freight": freight, "freight_alternatives": options[1:], "freight_notes": notes,
@@ -167,11 +180,11 @@ def summary(c):
     per = "м²" if c["unit"] == "м2" or "ЛИСТ" in it["section"].upper() else "м"
     lines = [f"{it['section']} | {it['name']} | {it['size']}",
              f"{it['supplier']}, прайс {it['price_date']}: {fmt(it['price_rub'])} ₽/{it['price_unit']} (с НДС РФ) [{it['src']}]"]
-    q = [f"{c['qty']:g} {c['unit']}"]
+    q = [f"{c['qty']:g} {c['unit']}" + (f" по {c['piece_desc']}" if c.get("piece") else "")]
     if c["tons"] is not None and c["unit"] != "т":
         q.append(f"{c['tons']:.3f} т")
     if c["meters"] is not None and c["unit"] not in ("м", "м2"):
-        q.append(f"{fmt(c['meters'])} {per}")
+        q.append(f"{c['meters']:.1f} {per}" if c["meters"] < 100 else f"{fmt(c['meters'])} {per}")
     if c["mass_kg_m"]:
         q.append(f"теор. масса {c['mass_kg_m']:.3f} кг/{per} (факт ±3–8%)")
     lines.append("Партия: " + ", ".join(q))

@@ -49,6 +49,9 @@ SYSTEM = """Ты — помощник Алема, B2B-поставщика ме�
 4. Есть позиция, количество и город — сразу считай calc_cost. Нет города — считай до Алматы и скажи об этом.
    Нет количества — покажи цены из каталога и спроси объём.
 5. Количество: «5т», «5 тонн» → 5 т; «600 м», «600 метров» → 600 м; «200 шт» → 200 шт.
+   Листы штуками («5 листов 1500х3000») → unit=шт + sheet_mm="1500x3000"; трубы/арматура/уголок штуками
+   («100 хлыстов по 6 м») → unit=шт + piece_length_m=6. Размер листа/хлыста в каталоге не указан — если не задан
+   в запросе, спроси (стандарт листа 1500х6000 или 1250х2500, хлыст 6 или 12 м).
 6. Всегда указывай поставщика и дату прайса. Вес — теоретический. Доставка — оценка по средним ставкам.
 7. Профтруба/квадратка/прямоугольная = труба профильная (в каталоге «ПРЯМОУГ»/«КВАДРАТ»); «сороковка» = 40;
    «двойка» — стенка 2 мм. Швеллер в прайсе без серии П/У — предупреждай об этом.
@@ -80,6 +83,10 @@ TOOLS = [
                 "quantity": {"type": "number", "description": "количество"},
                 "unit": {"type": "string", "enum": ["т", "кг", "м", "м2", "шт"], "description": "единица количества"},
                 "city": {"type": "string", "description": "город доставки в Казахстане, например «Караганда»"},
+                "sheet_mm": {"type": "string", "description": "если unit=шт и это лист: размер листа в мм «ширинаxдлина», "
+                                                            "например «1500x3000»"},
+                "piece_length_m": {"type": "number", "description": "если unit=шт и это труба/арматура/уголок и т.п.: "
+                                                                    "длина одной штуки (хлыста) в метрах, например 6 или 12"},
             },
             "required": ["item_id", "quantity", "unit", "city"],
         },
@@ -114,7 +121,8 @@ def run_tool(name, args):
             })
         return json.dumps({"found": total, "shown": len(items), "items": items}, ensure_ascii=False)
     if name == "calc_cost":
-        c = costing.landed_cost(args["item_id"], float(args["quantity"]), args["unit"], args["city"])
+        c = costing.landed_cost(args["item_id"], float(args["quantity"]), args["unit"], args["city"],
+                                args.get("sheet_mm"), args.get("piece_length_m"))
         return costing.summary(c)
     if name == "delivery":
         opts, notes = costing.freight_options(args["city_from"], args["city_to"], float(args["tons"]))
