@@ -1,0 +1,15 @@
+page_01.html	https://mc.ru/price/msk
+page_02.html	https://mc.ru/price/speterburg
+page_03.html	https://mc.ru/price/nnovgorod
+page_04.html	https://mc.ru/price/penza
+page_05.html	https://mc.ru/price/samara
+page_06.html	https://mc.ru/price/balakovo
+page_07.html	https://mc.ru/price/cheboksary
+page_08.html	https://mc.ru/price/bryansk
+page_09.html	https://mc.ru/price/belgorod
+page_10.html	https://mc.ru/price/kursk
+page_11.html	https://mc.ru/price/orel
+page_12.html	https://mc.ru/price/rostovnadonu
+page_13.html	https://mc.ru/price/taganrog
+page_14.html	https://mc.ru/price/krasnodar
+page_15.html	https://mc.ru/price/stavropol
