@@ -147,7 +147,8 @@ def landed_cost(iid, qty, unit, city, sheet_mm=None, piece_length_m=None):
     fx, spread = rate.effective(sup["currency"])
     goods_kzt = net_rub * fx
 
-    options, notes = freight_options(sup["city"], city, tons) if tons else ([], ["вес неизвестен — доставку не посчитать"])
+    origin = r.get("warehouse") or sup["city"]
+    options, notes = freight_options(origin, city, tons) if tons else ([], ["вес неизвестен — доставку не посчитать"])
     freight = options[0] if options else None
     freight_kzt = freight["kzt"] if freight else 0
     base = goods_kzt + freight_kzt
@@ -172,7 +173,7 @@ def landed_cost(iid, qty, unit, city, sheet_mm=None, piece_length_m=None):
         warn.append(f"НДС РФ {sup['vat_pct']}% снят — при экспорте в ЕАЭС поставщик должен дать ставку 0%; "
                     f"если откажет, товар дороже на {sup['vat_pct']}%")
     return {
-        "item": {"id": iid, "supplier": r["supplier"], "price_date": r["price_date"], "section": r["section"],
+        "item": {"id": iid, "supplier": r["supplier"], "warehouse": r.get("warehouse") or sup["city"], "price_date": r["price_date"], "section": r["section"],
                  "name": r["name"], "size": f"{r['size_label']} {r['size']}".strip(), "size_raw": r["size"],
                  "price_rub": float(r["price_rub"]), "price_unit": r["unit"], "src": r["src"]},
         "qty": qty, "unit": unit, "piece": piece, "piece_desc": sheet_mm or (f"{piece_length_m} м" if piece_length_m else None),
@@ -185,6 +186,49 @@ def landed_cost(iid, qty, unit, city, sheet_mm=None, piece_length_m=None):
         "per_m_no_vat": base / meters if meters else None,
         "city": city, "warnings": warn,
     }
+
+
+def equivalent_key(r):
+    """Одна и та же позиция на разных складах: раздел, наименование, размер, единица (т = теор.т)."""
+    unit = "т" if r["unit"] in TON_UNITS else r["unit"]
+    return (r["section"].upper(), re.sub(r"\s+", " ", r["name"].strip().lower()), r["size"].strip(), unit)
+
+
+def equivalents(iid):
+    """Эта позиция на всех складах — по одной самой дешёвой строке на склад (без некондиции/н/д)."""
+    base = get_item(iid)
+    key = equivalent_key(base)
+    best = {}
+    for r in find.load():
+        if equivalent_key(r) != key or float(r["price_rub"]) <= 0:
+            continue
+        if find.is_offgrade(r) and not find.is_offgrade(base):
+            continue
+        w = r.get("warehouse") or "Москва"
+        if w not in best or float(r["price_rub"]) < float(best[w]["price_rub"]):
+            best[w] = r
+    best.setdefault(base.get("warehouse") or "Москва", base)
+    return list(best.values())
+
+
+def best_landed_cost(iid, qty, unit, city, sheet_mm=None, piece_length_m=None):
+    """Себестоимость с каждого склада, где есть эта позиция; самый выгодный — основной результат,
+    остальные — в c["warehouses"] (склад, итого с НДС, разница с лучшим в %)."""
+    results = []
+    for r in equivalents(iid):
+        try:
+            c = landed_cost(item_id(r), qty, unit, city, sheet_mm, piece_length_m)
+        except Exception:
+            continue
+        if c["freight"] or not c["tons"]:  # склад без данных о доставке не сравниваем
+            results.append(c)
+    if not results:
+        return landed_cost(iid, qty, unit, city, sheet_mm, piece_length_m)
+    results.sort(key=lambda c: c["total_with_vat_kzt"])
+    best = results[0]
+    best["warehouses"] = [(c["item"]["warehouse"], c["total_with_vat_kzt"],
+                           (c["total_with_vat_kzt"] / best["total_with_vat_kzt"] - 1) * 100) for c in results]
+    return best
 
 
 def convert(iid, qty, unit, sheet_mm=None, piece_length_m=None):
@@ -219,7 +263,8 @@ def summary(c):
     it = c["item"]
     per = "м²" if c["unit"] == "м2" or "ЛИСТ" in it["section"].upper() else "м"
     lines = [f"{it['section']} | {it['name']} | {it['size']}",
-             f"{it['supplier']}, прайс {it['price_date']}: {fmt(it['price_rub'])} ₽/{it['price_unit']} (с НДС РФ) [{it['src']}]"]
+             f"{it['supplier']}, склад {it.get('warehouse', '')}, прайс {it['price_date']}: "
+             f"{fmt(it['price_rub'])} ₽/{it['price_unit']} (с НДС РФ) [{it['src']}]"]
     q = [f"{c['qty']:g} {c['unit']}" + (f" по {c['piece_desc']}" if c.get("piece") else "")]
     if c["tons"] is not None and c["unit"] != "т":
         q.append(f"{c['tons']:.3f} т")
@@ -243,6 +288,8 @@ def summary(c):
                  + (f", {fmt(c['per_m_no_vat'])} ₸/{per})" if c["per_m_no_vat"] else (")" if c["per_t_no_vat"] else "")))
     lines.append(f"НДС РК 16% при ввозе: {fmt(c['kz_vat_kzt'])} ₸ (идёт в зачёт, если вы плательщик НДС)")
     lines.append(f"Итого с НДС: {fmt(c['total_with_vat_kzt'])} ₸")
+    if c.get("warehouses"):
+        lines.append("Склады (итого с НДС): " + ", ".join(f"{w} {fmt(t)} ₸ ({d:+.0f}%)" for w, t, d in c["warehouses"]))
     if c["freight"]:
         lines.append("Доставка — оценка по средним ставкам, не котировка перевозчика.")
     for w in c["warnings"]:
@@ -263,4 +310,4 @@ if __name__ == "__main__":
     hits, total = find.find(query, limit=1)
     if not hits:
         sys.exit(f"«{query}» не найдено в каталоге")
-    print(summary(landed_cost(item_id(hits[0]), qty, unit, city)))
+    print(summary(best_landed_cost(item_id(hits[0]), qty, unit, city)))

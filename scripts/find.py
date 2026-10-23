@@ -112,11 +112,20 @@ def sheet_format(r):
     return f"{w:g}x{l:g}"
 
 
+_cache = {"key": None, "rows": []}
+
+
 def load():
-    rows = []
-    for f in sorted(CATALOG.glob("*.csv")):
-        rows += list(csv.DictReader(open(f, encoding="utf-8")))
-    return rows
+    """Все каталоги (все поставщики и склады). Перечитываются, только если файлы изменились."""
+    files = sorted(CATALOG.glob("*.csv"))
+    key = tuple((f.name, f.stat().st_mtime) for f in files)
+    if key != _cache["key"]:
+        rows = []
+        for f in files:
+            with open(f, encoding="utf-8") as fh:
+                rows += list(csv.DictReader(fh))
+        _cache.update(key=key, rows=rows)
+    return _cache["rows"]
 
 
 GRADE = re.compile(

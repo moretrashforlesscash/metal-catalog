@@ -23,7 +23,7 @@ import xlrd
 SUPPLIER = "Металл Сервис"
 COLUMNS = [(0, 1, 2, 3), (5, 6, 7, 8)]  # наименование, размер, ед.изм, цена
 PAGE = 72
-FIELDS = ["supplier", "price_date", "file", "title", "section", "name",
+FIELDS = ["supplier", "warehouse", "price_date", "file", "title", "section", "name",
           "size_label", "size", "unit", "price_rub", "vat_included", "src"]
 
 
@@ -68,7 +68,7 @@ def cells_stream(sheet):
                     yield r, cols[0], vals
 
 
-def parse_file(path):
+def parse_file(path, warehouse="Москва"):
     sheet = xlrd.open_workbook(path, formatting_info=True).sheet_by_index(0)
     date = price_date(sheet)
     title = section = size_label = ""
@@ -100,7 +100,7 @@ def parse_file(path):
                 emit(prev, split_sizes(size))
             continue
         item = {
-            "supplier": SUPPLIER, "price_date": date, "file": path.name,
+            "supplier": SUPPLIER, "warehouse": warehouse, "price_date": date, "file": path.name,
             "title": title, "section": section,
             "name": name or (prev["name"] if prev else section),
             "size_label": size_label, "unit": unit, "price_rub": p,
@@ -111,10 +111,11 @@ def parse_file(path):
     return rows
 
 
-def main(raw_dir, out="catalog/metallservis.csv"):
+def main(raw_dir, out="catalog/metallservis.csv", warehouse="Москва"):
+    """Все xls из папки → один каталог склада (Москва — общий прайс из 10 файлов, филиал — свой файл)."""
     rows = []
     for f in sorted(Path(raw_dir).glob("*.xls")):
-        part = parse_file(f)
+        part = parse_file(f, warehouse)
         print(f"{f.name}: {len(part)} позиций")
         rows += part
     Path(out).parent.mkdir(exist_ok=True)

@@ -21,12 +21,14 @@ import datetime as dt
 import hashlib
 import importlib.util
 import io
+import json
 import os
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import traceback
 import urllib.parse
 import urllib.request
@@ -41,8 +43,10 @@ PRICE_PAGE = "https://mc.ru/price/msk"
 ZIP_FALLBACK = ["https://mc.ru/prices/metserv.zip"]  # имя архива с сайта: metserv.zip
 # на странице несколько zip (резка и т.п.) — общий прайс узнаём по составу файлов
 EXPECTED_XLS = {"truby.xls", "sortovojprokat.xls", "listovojprokat.xls", "krepezh.xls", "nerzhaveika.xls"}
-FAFA_ROUTES = [("Москва", "Алматы"), ("Москва", "Астана"), ("Москва", "Караганда"),
-               ("Москва", "Шымкент"), ("Екатеринбург", "Алматы"), ("Челябинск", "Алматы")]
+BRANCHES = json.loads((SUP / "branches.json").read_text(encoding="utf-8"))
+WAREHOUSES = ["Москва"] + [b["city"] for b in BRANCHES]
+KZ_HUBS = ["Алматы", "Астана", "Караганда", "Шымкент", "Павлодар"]
+FAFA_ROUTES = [(w, c) for w in WAREHOUSES for c in KZ_HUBS]
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -162,6 +166,39 @@ def update_mc(today, report):
     STATE.write_text(digest + "\n")  # только после успешной проверки — битый архив скачаем снова
 
 
+def update_branch(b, today):
+    """Прайс одного филиала: скачать xls → разобрать → проверить → catalog/metallservis_<slug>.csv. Строка отчёта."""
+    data = curl(b["url"])
+    digest = hashlib.sha256(data).hexdigest()
+    state = SUP / f"last_{b['slug']}.sha256"
+    if state.exists() and state.read_text().strip() == digest:
+        return f"{b['city']}: не изменился"
+    raw = SUP / "raw" / today / "filials" / b["slug"]
+    raw.mkdir(parents=True, exist_ok=True)
+    (raw / Path(urllib.parse.urlparse(b["url"]).path).name).write_bytes(data)
+    parser = load_module(SUP / "parser.py", "mc_parser")
+    tmp = Path(tempfile.mkdtemp()) / "branch.csv"
+    parser.main(str(raw), str(tmp), b["city"])
+    target = ROOT / "catalog" / f"metallservis_{b['slug']}.csv"
+    old, new = read_catalog(target), read_catalog(tmp)
+    problems = validate(old, new)
+    if problems:
+        return f"⚠️ {b['city']}: НЕ обновлён — " + "; ".join(problems)
+    shutil.move(tmp, target)
+    state.write_text(digest + "\n")
+    return f"{b['city']}: {len(new)} позиций, " + diff_report(old, new).split("\n")[0]
+
+
+def update_branches(today, report):
+    lines = []
+    for b in BRANCHES:
+        try:
+            lines.append(update_branch(b, today))
+        except Exception as e:  # один филиал упал — остальные обновляем
+            lines.append(f"⚠️ {b['city']}: {e}")
+    report.append("Филиалы: " + "; ".join(lines))
+
+
 def prune_raw(keep_days=30):
     cutoff = dt.date.today() - dt.timedelta(days=keep_days)
     months = {}
@@ -182,15 +219,20 @@ def update_freight(report):
     rows, added = della.save(della.fetch())
     report.append(f"Della: +{added} сделок по Казахстану (всего {len(rows)})")
     fafa = load_module(ROOT / "scripts" / "freight_fafa.py", "fafa")
-    got = []
+    got, best, failed = {}, {}, 0
     for f, t in FAFA_ROUTES:
         try:
             q = fafa.quote(f, t)
             fafa.save(q)
-            got.append(f"{f}→{t} {q['t20'] / 1e6:.2f} млн ₸")
-        except Exception as e:  # маршрут мог пропасть с биржи — не валим всё обновление
-            got.append(f"{f}→{t} ошибка: {e}")
-    report.append("Фура 20 т (fa-fa): " + "; ".join(got))
+            got[(f, t)] = q["t20"]
+            if t not in best or q["t20"] < got[(best[t], t)]:
+                best[t] = f
+        except Exception:  # маршрут мог пропасть с биржи — не валим всё обновление
+            failed += 1
+        time.sleep(0.5)
+    line = "; ".join(f"→{t}: Москва {got[('Москва', t)] / 1e6:.2f}, дешевле всего {best[t]} "
+                     f"{got[(best[t], t)] / 1e6:.2f} млн ₸" for t in KZ_HUBS if ("Москва", t) in got and t in best)
+    report.append("Фура 20 т (fa-fa): " + line + (f" (не ответило маршрутов: {failed})" if failed else ""))
 
 
 # ---------- отчёт ----------
@@ -207,9 +249,9 @@ def main():
     today = dt.date.today().isoformat()
     report = [f"Обновление metal-catalog {today}"]
     git("pull", "--rebase", "--autostash")
-    for step in (update_mc, update_freight):
+    for step in (update_mc, update_branches, update_freight):
         try:
-            step(today, report) if step is update_mc else step(report)
+            step(report) if step is update_freight else step(today, report)
         except Exception as e:
             report.append(f"⚠️ {step.__name__}: {e}")
             traceback.print_exc()

@@ -58,7 +58,7 @@ def cost_card(c, supplier_city):
     title = pretty_name(it["section"], it["name"], it["size_raw"])
     qty = f"{c['qty']:g} {c['unit']}" + (f" по {c['piece_desc']}" if c.get("piece") else "")
     out = [f"<b>{escape(title)} · {escape(qty)} → {escape(c['city'])}</b>",
-           f"{escape(it['supplier'])}, прайс {ru_date(it['price_date'])}", "",
+           f"{escape(it['supplier'])}, склад {escape(it.get('warehouse') or supplier_city)}, прайс {ru_date(it['price_date'])}", "",
            f"<b>💰 Итого с НДС: {money(c['total_with_vat_kzt'])} ₸</b>",
            f"Без НДС: {money(c['cost_no_vat_kzt'])} ₸"]
     per_line = []
@@ -85,6 +85,11 @@ def cost_card(c, supplier_city):
         out.append(escape(line))
     else:
         out.append("🚚 Доставку посчитать не удалось")
+    others = c.get("warehouses", [])[1:4]
+    msk = [w for w in c.get("warehouses", [])[4:] if w[0] == "Москва"]  # Москву показываем всегда — для сравнения
+    others += msk
+    if others:
+        out.append("🏭 Другие склады: " + ", ".join(f"{escape(w)} {money(t)} ₸ (+{d:.0f}%)" for w, t, d in others))
     if c["tons"] is not None and c["mass_kg_m"]:
         meters = dec(c["meters"], 1) if c["meters"] < 100 else money(c["meters"])
         out.append(f"⚖️ {dec(c['tons'], 3).rstrip('0').rstrip(',')} т ≈ {meters} {per} "
@@ -94,7 +99,8 @@ def cost_card(c, supplier_city):
                f"Без НДС РФ: {money(c['goods_rub_net'])} ₽ × {dec(c['fx']['rate'])} ₸/₽ (курс НБ РК"
                + (f" +{c['fx']['spread_pct']}%" if c["fx"]["spread_pct"] else "") + ")"]
     if f:
-        details.append(f"Доставка {supplier_city} → {c['city']}: {f['source']}. Оценка, не котировка перевозчика")
+        details.append(f"Доставка {it.get('warehouse') or supplier_city} → {c['city']}: {f['source']}. "
+                       "Оценка, не котировка перевозчика")
     fmt_warn = [w for w in c["warnings"] if "формат" in w]
     for w in fmt_warn:  # формат листа — важно, показываем сразу, а не в «Подробнее»
         out.append("📐 " + escape(w[0].upper() + w[1:]))
@@ -111,7 +117,8 @@ def prices_card(rows, title=None):
     out = [f"<b>{escape(head)}</b> · {escape(r0['supplier'])}, {ru_date(r0['price_date'])}"]
     for r in rows:
         label = f"{r['name']} {r['size_label']} {r['size']}".strip()
-        out.append(f"• <b>{money(float(r['price_rub']))} ₽/{escape(r['unit'])}</b> — {escape(label)}")
+        wh = f" · {escape(r['warehouse'])}" if r.get("warehouse") else ""
+        out.append(f"• <b>{money(float(r['price_rub']))} ₽/{escape(r['unit'])}</b> — {escape(label)}{wh}")
     m = find.mass_kg_m(r0)
     if m:
         per = "м²" if "ЛИСТ" in r0["section"].upper() else "м"

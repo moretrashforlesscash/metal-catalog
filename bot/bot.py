@@ -46,6 +46,12 @@ SYSTEM = """Ты — помощник Алема, B2B-поставщика ме�
 - convert: пересчёт тонны ↔ метры (м²) ↔ штуки (хлысты, листы) для позиции.
 - delivery: стоимость доставки партии между городами.
 
+СКЛАДЫ: у «Металл Сервиса» несколько складов — Москва, Екатеринбург, Челябинск, Пермь, Новосибирск, Омск.
+calc_cost сам находит ту же позицию на всех складах и выбирает самый выгодный с учётом доставки (в карточке —
+лучший склад и сравнение). Поэтому в calc_cost можно передать id позиции с любого склада. Если просят конкретный
+склад («из Москвы») — выбери позицию именно этого склада и скажи, что выгоднее другой, если карточка это показала.
+В search_catalog у каждой позиции есть поле warehouse.
+
 Карточки calc_cost и show_prices бот отправляет сам, красиво оформленными. После них НЕ повторяй цифры и не
 пересказывай карточку: допиши максимум 1–2 коротких строки — как понял неоднозначный запрос, альтернативы,
 предупреждение или вопрос. Если добавить нечего — ответь одним словом «Готово».
@@ -186,7 +192,7 @@ def run_tool(name, args, outbox):
                 "id": costing.item_id(r), "section": r["section"], "name": r["name"],
                 "size": f"{r['size_label']} {r['size']}".strip(), "price_rub": float(r["price_rub"]),
                 "unit": r["unit"], "mass_kg_m": round(m, 3) if m else None,
-                "supplier": r["supplier"], "price_date": r["price_date"],
+                "supplier": r["supplier"], "warehouse": r.get("warehouse", ""), "price_date": r["price_date"],
             })
             if "ЛИСТ" in r["section"].upper():
                 items[-1]["sheet_format"] = find.sheet_format(r) or "в прайсе не указан"
@@ -195,8 +201,8 @@ def run_tool(name, args, outbox):
             res["note"] = note
         return json.dumps(res, ensure_ascii=False)
     if name == "calc_cost":
-        c = costing.landed_cost(args["item_id"], float(args["quantity"]), args["unit"], args["city"],
-                                args.get("sheet_mm"), args.get("piece_length_m"))
+        c = costing.best_landed_cost(args["item_id"], float(args["quantity"]), args["unit"], args["city"],
+                                     args.get("sheet_mm"), args.get("piece_length_m"))
         outbox.append(cards.cost_card(c, costing.SETTINGS["suppliers"][c["item"]["supplier"]]["city"]))
         return "Карточка отправлена пользователю. Для справки:\n" + costing.summary(c)
     if name == "show_prices":

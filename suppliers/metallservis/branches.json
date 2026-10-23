@@ -1,0 +1,7 @@
+[
+  {"city": "Екатеринбург", "slug": "ekb", "url": "https://mc.ru/prices/filials/price_ekaterinburg.xls"},
+  {"city": "Челябинск", "slug": "chel", "url": "https://mc.ru/prices/filials/price_chelyabinsk_pr.xls"},
+  {"city": "Пермь", "slug": "perm", "url": "https://mc.ru/prices/filials/price_perm.xls"},
+  {"city": "Новосибирск", "slug": "nsk", "url": "https://mc.ru/prices/filials/price_sib.xls"},
+  {"city": "Омск", "slug": "omsk", "url": "https://mc.ru/prices/filials/price_omsk.xls"}
+]
