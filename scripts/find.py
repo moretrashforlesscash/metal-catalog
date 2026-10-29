@@ -19,6 +19,8 @@ import weights  # noqa: E402
 CATALOG = Path(__file__).parent.parent / "catalog"
 SYNONYMS = {
     "проф": ["прямоуг", "квадрат"],
+    "вязальная": ["отож"],  # вязальная проволока = отожжённая (ГОСТ 3282)
+    "вязальной": ["отож"],
     "профиль": ["прямоуг", "квадрат"],
     "профильная": ["прямоуг", "квадрат"],
     "двутавр": ["балк"],
@@ -167,7 +169,9 @@ def match(r, words, nums):
         if w.startswith("проф") and w not in SYNONYMS:  # профтруба, профтрубы, профильной...
             w = "проф"
         alts = SYNONYMS.get(w, [w if re.search(r"\d", w) or len(w) < 5 else w[:4]])
-        if not any(a in hay for a in alts):
+        # совпадение с началом слова: «пров» не должно находить «водогазоПРОВодная»
+        if not any(a in hay if re.search(r"\d", a) else re.search(r"(?<![а-яa-z])" + re.escape(a), hay)
+                   for a in alts):
             return False
     have = numbers(norm(dims_text(r["name"]))) + numbers(r["size"])
     if "КВАДРАТ" in r["section"].upper() and "ТРУБ" in r["section"].upper() and have:
@@ -199,7 +203,7 @@ def parse_query(query):
     return nums, words
 
 
-OFFGRADE = re.compile(r"неконд|уценк|н/д|\bнн\b|2\s*сорт|б/у|обрезк")
+OFFGRADE = re.compile(r"неконд|уценк|н/д|\bнн\b|2\s*сорт|б/у|обрезк|брак|(?<!без )\bстык")
 
 
 def is_offgrade(r):
