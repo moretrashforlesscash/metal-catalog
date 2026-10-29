@@ -240,8 +240,11 @@ OFFER = {
 }
 
 
+MARKUP = 0.10  # наценка для партнёра, только в чистых файлах; *_расчёт.xlsx — себестоимость
+
+
 def kzt_per_t(rub):
-    return rub / 1.22 * RATE * 1.16
+    return rub / 1.22 * RATE * (1 + MARKUP) * 1.16
 
 
 def build_clean(path, title, items, names):
