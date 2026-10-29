@@ -220,9 +220,89 @@ def build(path, title, items, client_col):
     wb.save(path)
 
 
+# Чистые названия для партнёра — по одному на каждый вариант из R1/R2/R3 (тот же порядок)
+OFFER = {
+    "R1": [["Лист г/к 2 мм, Ст3"], ["Лист г/к 3 мм, Ст3"], ["Лист г/к 6 мм, Ст3"],
+           ["Арматура А500С Ø10"], ["Арматура А500С Ø12"], ["Арматура А500С Ø20"],
+           ["Проволока вязальная (отожжённая) Ø1,2 мм"],
+           ["Двутавр 10, ГОСТ 8239"], ["Двутавр 12Б1", "Двутавр 12Б2"], ["Двутавр 16Б1"],
+           ["Двутавр 20, ГОСТ 8239", "Двутавр 20Б1"],
+           ["Труба б/ш 57×3,5, ГОСТ 8732, Ст20"], ["Труба б/ш 76×3,5, ГОСТ 8732, Ст20"], ["Труба б/ш 76×4, ГОСТ 8732, Ст20"],
+           ["Труба б/ш 108×6, ГОСТ 8732, Ст20"], ["Труба б/ш 219×10, ГОСТ 8732, Ст20"]],
+    "R2": [["Труба электросварная 219×6, ГОСТ 10704"], ["Уголок 50×50×4, ГОСТ 8509"],
+           ["Труба профильная 100×100×3"], ["Труба электросварная 76×3, ГОСТ 10704"]],
+    "R3": [["Труба профильная 300×300×6"], ["Труба профильная 200×200×5"], ["Труба профильная 150×150×4"],
+           ["Лист рифлёный 4 мм (чечевица)", "Лист рифлёный 4 мм (ромб)"], ["Лист г/к 22 мм"], ["Лист г/к 12 мм"],
+           ["Двутавр 30Б1", "Двутавр 30Ш1"], ["Уголок 40×40×4", "Уголок 40×40×3"], ["Арматура А500С Ø16"],
+           ["Швеллер 30, г/к, ГОСТ 8240", "Швеллер гнутый 300×100×6"],
+           ["Лебёдка с редуктором 500 кг, канат 30 м, 380 В, TOR"], ["Блок монтажный опорный TOR 5 т"],
+           ["Труба электросварная 426×8 (24 шт, длина уточняется)", "Труба электросварная 426×10 (24 шт, длина уточняется)"]],
+}
+
+
+def kzt_per_t(rub):
+    return rub / 1.22 * RATE * 1.16
+
+
+def build_clean(path, title, items, names):
+    """Файл для партнёра: только позиция, кол-во и цена в ₸ с НДС. Без поставщика, рублей и расчётов."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Заявка"
+    ws["A1"] = title
+    ws["A1"].font = Font(name=ARIAL, bold=True, size=14)
+    per_t = all(unit == "т" for _, _, unit, _, _ in items)
+    cols = ["№", "Наименование", "Ед. изм.", "Цена за ед., ₸ с НДС"] if per_t else \
+           ["№", "Наименование", "Кол-во", "Ед. изм.", "Цена за ед., ₸ с НДС", "Сумма, ₸ с НДС"]
+    H = 3
+    for j, name in enumerate(cols, start=1):
+        c = ws.cell(H, j, name)
+        c.font, c.fill, c.border = HEAD, HEAD_FILL, BOX
+        c.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
+    r, n, sums = H + 1, 0, []
+    for (text, qty, unit, cands, _), offer in zip(items, names):
+        n += 1
+        found = [(nm, c, pick(c[1], c[2], c[3])[0]) for nm, c in zip(offer, cands)]
+        found = [(nm, c, row) for nm, c, row in found if row] or [(offer[0], None, None)]
+        for k, (nm, cand, row) in enumerate(found):
+            first = k == 0
+            mass = row and (cand[5] or find.mass_kg_m(row))
+            if row is None:
+                price, u = "нет в наличии", unit
+            elif unit == "т":
+                price, u = round(kzt_per_t(float(row["price_rub"]))), "т"
+            else:
+                price, u = round(kzt_per_t(float(row["price_rub"])) * mass / 1000), ("м²" if unit == "м2" else "м")
+            q = qty if (first and unit != "шт") or (row is None) else None
+            vals = [n if first else None, nm if first else f"вариант: {nm}"]
+            vals += [u, price] if per_t else [q, u, price, None]
+            for j, v in enumerate(vals, start=1):
+                c = ws.cell(r, j, v)
+                c.font, c.border = BLACK, BOX
+                c.alignment = Alignment(wrap_text=True, vertical="top")
+                if not first:
+                    c.fill = GREY
+            ws.cell(r, cols.index("Цена за ед., ₸ с НДС") + 1).number_format = MONEY
+            if not per_t and first and q and isinstance(price, int):
+                c = ws.cell(r, 6, f"=C{r}*E{r}")
+                c.number_format = MONEY
+                sums.append(f"F{r}")
+            r += 1
+    if sums:
+        ws.cell(r, 5, "Итого:").font = BOLD
+        c = ws.cell(r, 6, "=" + "+".join(sums))
+        c.font, c.number_format, c.border = BOLD, MONEY, BOX
+        r += 1
+    ws.cell(r + 1, 1, f"Цены с НДС 16%, без доставки, на {RATE_DATE}.").font = Font(name=ARIAL, italic=True)
+    for letter, w in zip("ABCDEF", [5, 52, 9, 9, 18, 18] if not per_t else [5, 52, 9, 20]):
+        ws.column_dimensions[letter].width = w
+    wb.save(path)
+
+
 if __name__ == "__main__":
     out = ROOT / "zayavki"
-    build(out / "2026-10-29_Заявка_1.xlsx", "Заявка 1 — цены без логистики", R1, client_col=True)
-    build(out / "2026-10-29_Заявка_2.xlsx", "Заявка 2 (энергоснабжение, ЯКНО) — цены без логистики", R2, client_col=False)
-    build(out / "2026-10-29_Заявка_3.xlsx", "Заявка 3 (ТК, рама установки) — цены без логистики", R3, client_col=False)
+    titles = ["Заявка 1", "Заявка 2", "Заявка 3"]
+    for i, (items, key) in enumerate([(R1, "R1"), (R2, "R2"), (R3, "R3")], start=1):
+        build(out / f"2026-10-29_Заявка_{i}_расчёт.xlsx", f"Заявка {i} — расчёт (внутренний)", items, client_col=(i == 1))
+        build_clean(out / f"2026-10-29_Заявка_{i}.xlsx", titles[i - 1], items, OFFER[key])
     print("готово:", *sorted(p.name for p in out.glob("2026-10-29_*.xlsx")))
